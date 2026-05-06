@@ -23,7 +23,12 @@ costType: "{{ user_cfg.rate.cost_type }}"
 
 creativePlaceholders:
   {% for size in user_cfg.creative[li.media_type].sizes %}
+  {% if li.media_type == 'native' %}
+  - creativeTemplateId: {{ li.native_creative_template.id }}
+    size: {{ size }}
+  {% else %}
   - size: {{ size }}
+  {% endif %}
   {% endfor %}
 
 {% if li.media_type == 'video' %}

@@ -1,4 +1,5 @@
 import re
+from typing import Any, Dict
 import yaml
 
 from jinja2 import Template as J2Template
@@ -23,6 +24,32 @@ def render_src(src: str, **kwargs) -> dict:
     clean_src = JINJA_PATTERN.sub(r'{{ \1 }}', src)
     return yaml.safe_load(J2Template(clean_src).render(**kwargs))
 
+def render_params(bidder: PrebidBidder, media_type: str=None,
+                  cpm: str=None, cpm_min: str=None, cpm_max: str=None) -> Dict[str, Any]:
+    params = dict(
+        time=config.start_time.strftime("%m/%d/%Y-%H:%M:%S"),
+        run_mode='Test: ' if config.cli['test_run'] else '',
+        bidder_code=bidder.codestr,
+        bidder_name=bidder.name,
+    )
+    params.update(bidder.params)
+    if media_type:
+        params['media_type'] = media_type
+    if cpm:
+        params['cpm'] = cpm
+    if cpm_min:
+        params['cpm_min'] = cpm_min
+    if cpm_max:
+        params['cpm_max'] = cpm_max
+    return params
+
+def render_obj(obj: Any, bidder: PrebidBidder, media_type: str=None,
+               cpm: str=None, cpm_min: str=None, cpm_max: str=None) -> Any:
+    return render_src(
+        yaml.safe_dump(obj),
+        **render_params(bidder, media_type=media_type, cpm=cpm, cpm_min=cpm_min, cpm_max=cpm_max)
+    )
+
 def render_cfg(objname: str, bidder: PrebidBidder, media_type: str=None,
                cpm: str=None, cpm_min: str=None, cpm_max: str=None) -> dict:
     """Get jinja rendered object of a top level user config object.
@@ -39,19 +66,4 @@ def render_cfg(objname: str, bidder: PrebidBidder, media_type: str=None,
     Returns:
       A dict of the jinja rendered src
     """
-    params = dict(
-        time=config.start_time.strftime("%m/%d/%Y-%H:%M:%S"),
-        run_mode='Test: ' if config.cli['test_run'] else '',
-        bidder_code=bidder.codestr,
-        bidder_name=bidder.name,
-    )
-    params.update(bidder.params)
-    if media_type:
-        params['media_type'] = media_type
-    if cpm:
-        params['cpm'] = cpm
-    if cpm_min:
-        params['cpm_min'] = cpm_min
-    if cpm_max:
-        params['cpm_max'] = cpm_max
-    return render_src(yaml.safe_dump(config.user[objname]), **params)
+    return render_obj(config.user[objname], bidder, media_type, cpm, cpm_min, cpm_max)

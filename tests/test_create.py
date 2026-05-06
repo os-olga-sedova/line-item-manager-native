@@ -24,7 +24,8 @@ from line_item_manager.utils import load_file, num_hash
 from .client import MockAdClient, SINGLE_ORDER_SVC_IDS, SINGLE_ORDER_VIDEO_SVC_IDS, \
      BIDDER_BANNER_SVC_IDS, BIDDER_VIDEO_SVC_IDS, BIDDER_TEST_RUN_VIDEO_SVC_IDS, \
      MISSING_RESOURCE_SVC_IDS, BIDDER_BANNER_SVC_IDS_NO_SIZE_OVERRIDE, \
-     BIDDER_VIDEO_BIDDER_KEY_MAP_SVC_IDS, BIDDER_VIDEO_SVC_IDS_SIZE_OVERRIDE
+     BIDDER_VIDEO_BIDDER_KEY_MAP_SVC_IDS, BIDDER_VIDEO_SVC_IDS_SIZE_OVERRIDE, \
+     BIDDER_NATIVE_SVC_IDS
 
 CONFIG_FILE = 'tests/resources/cfg.yml'
 KEY_FILE = 'tests/resources/gam_creds.json'
@@ -95,6 +96,10 @@ VIDEO_EXPECTED_LICA_SIZE_OVERRIDE = \
      'id': 9002,
      'lineItemId': 8002,
      'sizes': [{'height': 480, 'width': 640}, {'height': 240, 'width': 320}]}]]
+
+NATIVE_EXPECTED_LICA = \
+  [[{'creativeId': 4101, 'id': 9101, 'lineItemId': 8001},
+    {'creativeId': 4101, 'id': 9102, 'lineItemId': 8002}]]
 
 # init
 config._start_time = pytest.start_time
@@ -386,6 +391,20 @@ def test_banner_one_bidder(monkeypatch, cli_config):
     assert len(gam.li_objs) == 1
     assert load_file('tests/resources/banner_expected.yml') == gam.li_objs[0].line_items
     assert BANNER_EXPECTED_LICA == gam.lica_objs
+
+@pytest.mark.command(f'create tests/resources/cfg_native.yml -k {KEY_FILE} -b {CONFIG_BIDDER}')
+def test_native_one_bidder(monkeypatch, cli_config):
+    client = Client(CUSTOM_TARGETING, BIDDER_NATIVE_SVC_IDS)
+    monkeypatch.setattr(ad_manager.AdManagerClient, "LoadFromString", lambda x: client)
+    gam = GAMConfig()
+    gam.create_line_items()
+
+    assert len(gam.li_objs) == 1
+    assert gam.li_objs[0].native_creative_template['id'] == 10004400
+    assert gam.li_objs[0].native_style['id'] == 5101
+    assert load_file('tests/resources/native_expected.yml') == \
+      gam.li_objs[0].line_items
+    assert NATIVE_EXPECTED_LICA == gam.lica_objs
 
 @pytest.mark.command(f'create tests/resources/cfg_video_priority_8.yml -k {KEY_FILE} -b {CONFIG_BIDDER}')
 def test_video_priority_8(monkeypatch, cli_config):

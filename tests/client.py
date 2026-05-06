@@ -208,6 +208,47 @@ BIDDER_BANNER_SVC_IDS_NO_SIZE_OVERRIDE = dict(
     },
 )
 
+BIDDER_NATIVE_SVC_IDS = dict(
+    CreativeTemplateService={
+        dump(dict(id=10004400)): 10004400,
+    },
+    NativeStyleService={
+        dump(dict(
+            name="Prebid InteractiveOffers-native Style",
+            creativeTemplateId=10004400,
+        )): 5101,
+    },
+    CreativeService={
+        dump(dict(
+            name="Prebid InteractiveOffers-native",
+            advertiserId=1001,
+            size={'height': 1, 'width': 1},
+            creativeTemplateId=10004400,
+        )): 4101,
+    },
+    OrderService={
+        dump(dict(
+            name="Prebid-InteractiveOffers-native-01/02/2020-08:09:10 1.25-1.50",
+            advertiserId=1001,
+            traffickerId=5001,
+        )): 6001,
+    },
+    LineItemService={
+        dump(dict(
+            name="Prebid-InteractiveOffers-native-01/02/2020-08:09:10 @ 1.25",
+            orderId=6001,
+        )): 8001,
+        dump(dict(
+            name="Prebid-InteractiveOffers-native-01/02/2020-08:09:10 @ 1.50",
+            orderId=6001,
+        )): 8002,
+    },
+    LineItemCreativeAssociationService={
+        dump(dict(lineItemId=8001, creativeId=4101)): 9101,
+        dump(dict(lineItemId=8002, creativeId=4101)): 9102,
+    },
+)
+
 BIDDER_VIDEO_BIDDER_KEY_MAP_SVC_IDS = dict(
     CustomTargetingService={
         dump(dict(name="country")): 7101,
@@ -306,8 +347,8 @@ class MockAdClient:
                 recs.append(r_)
         return dict(results=recs)
 
-for i_ in ('AdUnits', 'Placements', 'Companies', 'Orders', 'CustomTargetingKeys'):
+for i_ in ('AdUnits', 'Placements', 'Companies', 'Orders', 'CustomTargetingKeys', 'CreativeTemplates', 'NativeStyles'):
     setattr(MockAdClient, f'get{i_}ByStatement', byStatement)
 
-for i_ in ('Creatives', 'LineItems', 'LineItemCreativeAssociations', 'CustomTargetingValues'):
+for i_ in ('Creatives', 'LineItems', 'LineItemCreativeAssociations', 'CustomTargetingValues', 'NativeStyles'):
     setattr(MockAdClient, f'create{i_}', create)

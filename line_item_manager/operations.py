@@ -132,6 +132,55 @@ class CreativeBanner(Creative):
         kwargs['isSafeFrameCompatible'] = isSafeFrameCompatible
         super().__init__(*args, **kwargs)
 
+class CreativeNative(Creative):
+    query_fields = ('id', 'name', 'advertiserId', 'creativeTemplateId', 'width', 'height')
+    create_fields = ('xsi_type', 'name', 'advertiserId', 'size', 'creativeTemplateId',
+                     'creativeTemplateVariableValues', 'destinationUrl')
+
+    def __init__(self, *args, xsi_type: str='TemplateCreative',
+                 creativeTemplateVariableValues: Optional[List[dict]]=None,
+                 destinationUrl: str=None, **kwargs):
+        if 'destination_url' in kwargs and not destinationUrl:
+            destinationUrl = kwargs.pop('destination_url')
+        kwargs['xsi_type'] = xsi_type
+        kwargs['creativeTemplateVariableValues'] = creativeTemplateVariableValues or []
+        if not destinationUrl is None:
+            kwargs['destinationUrl'] = destinationUrl
+        super().__init__(*args, **kwargs)
+
+class CreativeTemplate(AppOperations):
+    service = 'CreativeTemplateService'
+    method = 'getCreativeTemplatesByStatement'
+    query_fields = ('id', 'name', 'type', 'status')
+
+class NativeStyle(AppOperations):
+    service = 'NativeStyleService'
+    method = 'getNativeStylesByStatement'
+    create_method = 'createNativeStyles'
+    query_fields = ('id', 'name', 'creativeTemplateId')
+
+    def __init__(self, *args, **kwargs):
+        aliases = {
+            'creative_template_id': 'creativeTemplateId',
+            'custom_creative_format_id': 'creativeTemplateId',
+            'template_id': 'creativeTemplateId',
+            'format_id': 'creativeTemplateId',
+            'html_snippet': 'htmlSnippet',
+            'css_snippet': 'cssSnippet',
+            'applied_label_ids': 'appliedLabelIds',
+            'label_ids': 'appliedLabelIds',
+        }
+        for src, dst in aliases.items():
+            if src in kwargs:
+                if dst not in kwargs:
+                    kwargs[dst] = kwargs[src]
+                del kwargs[src]
+        super().__init__(*args, **kwargs)
+        # NativeStyle ids are immutable server-assigned values. Allow querying
+        # by id, but never include it in a createNativeStyles payload.
+        if 'id' in self.create_params:
+            del self.create_params['id']
+
 class CurrentNetwork(AppOperations):
     use_statement = False
     service = 'NetworkService'

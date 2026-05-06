@@ -1,0 +1,44 @@
+publisher:
+  network_code: 1234
+  network_name: "Video Publisher"
+
+advertiser:
+  name: "Prebid-{{ bidder_name }}"
+
+creative:
+  name: "Prebid {{ bidder_name }}-{{ media_type }}"
+  native:
+    creative_template_id: 10004400
+    sizes:
+      - height: 1
+        width: 1
+    destination_url: "%%CLICK_URL_UNESC%%%%PATTERN:hb_native_linkurl%%"
+    variable_values:
+      hb_adid: "%%PATTERN:{{ hb_adid }}%%"
+      hb_cache_id: "%%PATTERN:{{ hb_cache_id }}%%"
+      hb_native_title: "%%PATTERN:hb_native_title%%"
+      hb_native_body: "%%PATTERN:hb_native_body%%"
+      hb_native_image: "%%PATTERN:hb_native_image%%"
+      hb_native_linkurl: "%%PATTERN:hb_native_linkurl%%"
+    native_style:
+      name: "Prebid {{ bidder_name }}-native Style"
+      html_snippet: |
+        <div class="prebid-native">%%PATTERN:hb_native_title%%</div>
+      css_snippet: |
+        .prebid-native { display: block; }
+
+order:
+  name: "Prebid-{{ bidder_name }}-{{ media_type }}-{{ time }} {{ cpm_min }}-{{ cpm_max }}"
+
+line_item:
+  name: "Prebid-{{ bidder_name }}-{{ media_type }}-{{ time }} @ {{ cpm }}"
+  item_type: "price_priority"
+
+rate:
+  currency: "USD"
+  granularity:
+    type: "custom"
+    custom:
+      - min: 1.25
+        max: 1.50
+        interval: 0.25

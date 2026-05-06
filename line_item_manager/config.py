@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime
 import logging
 from typing import Callable, Dict, List, Iterable, Optional, Union
@@ -14,6 +15,9 @@ VERBOSE1: int = logging.INFO - 1
 VERBOSE2: int = logging.INFO - 2
 
 class Config:
+
+    NATIVE_TEMPLATE_ID_KEYS = ('creative_template_id', 'custom_creative_format_id',
+                               'template_id', 'format_id')
 
     def __init__(self):
         self._schema = None
@@ -100,7 +104,17 @@ class Config:
         return self.cli['bidder_code']
 
     def media_types(self) -> List[str]:
-        return [m_ for m_ in ('video', 'banner') if self.user['creative'].get(m_)]
+        return [m_ for m_ in ('video', 'banner', 'native') if self.user['creative'].get(m_)]
+
+    def native_template_id(self, native_cfg: Optional[Dict]=None) -> int:
+        native = native_cfg or self.user.get('creative', {}).get('native', {})
+        for key in self.NATIVE_TEMPLATE_ID_KEYS:
+            if key in native and not native[key] is None:
+                return int(native[key])
+        raise ValueError(
+            "Native creative requires one of: " +
+            ', '.join(self.NATIVE_TEMPLATE_ID_KEYS)
+        )
 
     def targeting_bidder_key_config(self) -> Dict:
         return self.user.get('targeting', {}).get('bidder', {})
@@ -163,6 +177,17 @@ class Config:
                 max_duration = self.user['creative']['video'].setdefault(
                     i_, self.app['prebid']['creative']['video'][i_])
             _ = self.user['creative']['video'].setdefault('duration', max_duration)
+
+        if self.user['creative'].get('native'):
+            native = self.user['creative']['native']
+            native['creative_template_id'] = self.native_template_id(native)
+            native_defaults = self.app.get('prebid', {}).get('creative', {}).get('native', {})
+            default_native_size = native_defaults.get('size', {'height': 1, 'width': 1})
+            native.setdefault('sizes', [copy.deepcopy(default_native_size)])
+            # Allow publisher YAML to use either style or native_style. The
+            # latter is kept as the canonical key after pre-create.
+            if 'style' in native and 'native_style' not in native:
+                native['native_style'] = native['style']
 
         if vcpm and not is_standard:
             raise ValueError("Specifying 'vcpm' requires using line item type 'standard'")

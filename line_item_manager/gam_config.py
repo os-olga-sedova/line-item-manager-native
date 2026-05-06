@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime
 from pprint import pformat
 from typing import Any, List, Iterable, Optional
@@ -11,10 +12,13 @@ import pytz
 
 from .config import config, VERBOSE1, VERBOSE2
 from .exceptions import ResourceNotActive, ResourceNotFound
-from .operations import Advertiser, AdUnit, Placement, TargetingKey, TargetingValues, \
-     CreativeBanner, CreativeVideo, Order, CurrentNetwork, CurrentUser, LineItem, LICA
+from .operations import (
+    Advertiser, AdUnit, Placement, TargetingKey, TargetingValues,
+    CreativeBanner, CreativeNative, CreativeTemplate, CreativeVideo,
+    NativeStyle, Order, CurrentNetwork, CurrentUser, LineItem, LICA,
+)
 from .prebid import PrebidBidder
-from .template import render_cfg, render_src
+from .template import render_cfg, render_obj, render_src
 from .utils import format_long_list, ichunk
 
 logger = config.getLogger(__name__)
@@ -55,6 +59,8 @@ class GAMLineItems:
         self._line_items: Optional[List[dict]] = None
         self._order: Optional[dict] = None
         self._targeting_key: Optional[dict] = None
+        self._native_creative_template: Optional[dict] = None
+        self._native_style: Optional[dict] = None
 
         self.gam: GAMConfig = gam
         self.media_type = media_type
@@ -68,7 +74,8 @@ class GAMLineItems:
 
     @property
     def is_size_override(self) -> bool:
-        default = config.app['mgr']['creative'][self.media_type]['size_override']
+        default = config.app.get('mgr', {}).get('creative', {}).get(
+            self.media_type, {}).get('size_override', False)
         return config.user['creative'][self.media_type].get('size_override', default)
 
     @property
@@ -145,6 +152,138 @@ class GAMLineItems:
             duration=config.user['creative']['video']['duration'],
         )
         return CreativeVideo(**params).fetchone(create=True)
+
+    def creative_native(self, index: int, cfg: dict, size: dict) -> dict:
+        native_cfg = cfg['native']
+        template = self.native_creative_template
+        _ = self.ensure_native_style(cfg)
+        params = dict(
+            name=self.creative_name(cfg, index),
+            advertiserId=self.advertiser['id'],
+            size=config.app['prebid']['creative']['size_override'] if self.is_size_override else size,
+            creativeTemplateId=template['id'],
+            creativeTemplateVariableValues=self.native_variable_values(native_cfg),
+        )
+        destination_url = self.native_destination_url(native_cfg)
+        if destination_url:
+            params['destinationUrl'] = destination_url
+        return CreativeNative(**params).fetchone(create=True)
+
+    @property
+    def native_creative_template(self) -> dict:
+        if self._native_creative_template is None:
+            template_id = config.native_template_id(config.user['creative']['native'])
+            self._native_creative_template = CreativeTemplate(id=template_id).fetchone()
+            if not self._native_creative_template:
+                if config.cli.get('dry_run'):
+                    self._native_creative_template = dict(
+                        id=template_id,
+                        name=f'Dry-run Native Creative Template {template_id}',
+                    )
+                else:
+                    raise ResourceNotFound(
+                        f"Native creative template id: {template_id} was not found")
+            if self._native_creative_template.get('status', 'ACTIVE') != 'ACTIVE':
+                raise ResourceNotActive(
+                    f"Native creative template id: {template_id} is not active")
+        return self._native_creative_template
+
+    @property
+    def native_style(self) -> dict:
+        if self.media_type != 'native':
+            return {}
+        cfg = render_cfg('creative', self.bidder, media_type=self.media_type)
+        return self.ensure_native_style(cfg)
+
+    def ensure_native_style(self, cfg: dict) -> dict:
+        if self._native_style is None:
+            style_cfg = self.native_style_cfg(cfg)
+            if style_cfg:
+                log('native_style', obj=style_cfg)
+                self._native_style = NativeStyle(**style_cfg).fetchone(create=True)
+            else:
+                self._native_style = {}
+        return self._native_style
+
+    def native_default(self, key: str):
+        native_defaults = config.app.get('prebid', {}).get('creative', {}).get('native', {})
+        if key not in native_defaults:
+            return None
+        return render_obj(native_defaults[key], self.bidder, media_type='native')
+
+    def native_destination_url(self, native_cfg: dict) -> Optional[str]:
+        for key in ('destinationUrl', 'destination_url'):
+            if native_cfg.get(key):
+                return native_cfg[key]
+        return self.native_default('destination_url')
+
+    def native_style_cfg(self, cfg: dict) -> Optional[dict]:
+        native_cfg = cfg['native']
+        style_cfg = native_cfg.get('native_style', native_cfg.get('style'))
+        if style_cfg is None:
+            style_cfg = self.native_default('native_style')
+        if not style_cfg:
+            return None
+
+        style = copy.deepcopy(style_cfg)
+        name_template = style.pop('name_template', None)
+        if 'html_snippet' in style:
+            style.setdefault('htmlSnippet', style.pop('html_snippet'))
+        if 'css_snippet' in style:
+            style.setdefault('cssSnippet', style.pop('css_snippet'))
+        for key in config.NATIVE_TEMPLATE_ID_KEYS:
+            style.pop(key, None)
+        style['creativeTemplateId'] = self.native_creative_template['id']
+        if not style.get('name'):
+            style['name'] = J2Template(name_template).render(
+                name=cfg['name'], bidder=self.bidder, media_type=self.media_type) \
+                if name_template else f"{cfg['name']} Native Style"
+        if 'size' not in style and native_cfg.get('sizes'):
+            style['size'] = native_cfg['sizes'][0]
+        return style
+
+    def native_variable_values(self, native_cfg: dict) -> List[dict]:
+        raw = native_cfg.get('creative_template_variable_values')
+        if raw is None:
+            raw = native_cfg.get('variable_values', native_cfg.get('variables'))
+        if raw is None:
+            raw = self.native_default('variable_values') or []
+
+        if isinstance(raw, dict):
+            items = []
+            for unique_name, value in raw.items():
+                if isinstance(value, dict):
+                    rec = copy.deepcopy(value)
+                    rec.setdefault('uniqueName', unique_name)
+                else:
+                    rec = dict(uniqueName=unique_name, value=value)
+                items.append(self.native_variable_value(rec))
+            return items
+
+        if isinstance(raw, list):
+            return [self.native_variable_value(v_) for v_ in raw]
+
+        raise ValueError('creative.native.variable_values must be a mapping or list of mappings')
+
+    @staticmethod
+    def native_variable_value(rec: dict) -> dict:
+        if not isinstance(rec, dict):
+            raise ValueError('Native creative template variable value must be a mapping')
+        out = copy.deepcopy(rec)
+        if 'unique_name' in out and 'uniqueName' not in out:
+            out['uniqueName'] = out.pop('unique_name')
+        out.setdefault('xsi_type', GAMLineItems.native_variable_xsi_type(out.get('value')))
+        return out
+
+    @staticmethod
+    def native_variable_xsi_type(value) -> str:
+        if isinstance(value, bool):
+            return 'BooleanCreativeTemplateVariableValue'
+        if isinstance(value, int):
+            return 'LongCreativeTemplateVariableValue'
+        if isinstance(value, float):
+            return 'DoubleCreativeTemplateVariableValue'
+        return 'StringCreativeTemplateVariableValue'
 
     @property
     def line_items(self) -> List[dict]:

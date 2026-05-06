@@ -1,0 +1,17 @@
+services:
+  test:
+    build: .
+    image: prebid/line-item-manager:local
+    command: make test
+
+  line-item-manager:
+    build: .
+    image: prebid/line-item-manager:local
+    profiles:
+      - tools
+    user: root
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    entrypoint: ["tini", "--", "line_item_manager"]
+    command: ["--help"]

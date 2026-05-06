@@ -6,6 +6,8 @@ mgr:
       size_override: True
     video:
       size_override: False
+    native:
+      size_override: False
     size_override:
       name_template: '{{ name }} Copy:{{ index }}'
   date_fmt: "%m/%d/%y %H:%M"
@@ -17,7 +19,7 @@ mgr:
   max_lica_records: 100
 
 googleads:
-  version: 'v202508'
+  version: 'v202602'
   line_items:
     micro_cent_factor: 1000000
     max_per_order: 450
@@ -48,6 +50,61 @@ prebid:
       width: 1
     video:
       max_duration: 30000 # milliseconds
+    native:
+      # GAM native creatives and expected creative placeholders commonly use a
+      # 1x1 placeholder size. Publishers may override this per YAML config.
+      size:
+        height: 1
+        width: 1
+      destination_url: "%%CLICK_URL_UNESC%%%%PATTERN:hb_native_linkurl%%"
+      # Default TemplateCreative variable values are intentionally generic.
+      # If your custom creative format uses different uniqueName values, supply
+      # creative.native.variable_values in the publisher YAML.
+      variable_values:
+        - uniqueName: "hb_adid"
+          value: "%%PATTERN:{{ hb_adid }}%%"
+        - uniqueName: "hb_cache_id"
+          value: "%%PATTERN:{{ hb_cache_id }}%%"
+        - uniqueName: "hb_cache_host"
+          value: "%%PATTERN:{{ hb_cache_host }}%%"
+        - uniqueName: "hb_cache_path"
+          value: "%%PATTERN:{{ hb_cache_path }}%%"
+        - uniqueName: "hb_pb"
+          value: "%%PATTERN:{{ hb_pb }}%%"
+        - uniqueName: "hb_native_title"
+          value: "%%PATTERN:hb_native_title%%"
+        - uniqueName: "hb_native_body"
+          value: "%%PATTERN:hb_native_body%%"
+        - uniqueName: "hb_native_image"
+          value: "%%PATTERN:hb_native_image%%"
+        - uniqueName: "hb_native_icon"
+          value: "%%PATTERN:hb_native_icon%%"
+        - uniqueName: "hb_native_brand"
+          value: "%%PATTERN:hb_native_brand%%"
+        - uniqueName: "hb_native_cta"
+          value: "%%PATTERN:hb_native_cta%%"
+        - uniqueName: "hb_native_linkurl"
+          value: "%%PATTERN:hb_native_linkurl%%"
+        - uniqueName: "hb_native_clicktrackers"
+          value: "%%PATTERN:hb_native_clicktrackers%%"
+        - uniqueName: "hb_native_imptrackers"
+          value: "%%PATTERN:hb_native_imptrackers%%"
+      native_style:
+        htmlSnippet: |
+          <div class="prebid-native">
+            <a class="prebid-native-link" href="%%CLICK_URL_UNESC%%%%PATTERN:hb_native_linkurl%%" target="_blank">
+              <img class="prebid-native-image" src="%%PATTERN:hb_native_image%%" />
+              <span class="prebid-native-title">%%PATTERN:hb_native_title%%</span>
+              <span class="prebid-native-body">%%PATTERN:hb_native_body%%</span>
+              <span class="prebid-native-cta">%%PATTERN:hb_native_cta%%</span>
+            </a>
+          </div>
+        cssSnippet: |
+          .prebid-native { font-family: Arial, sans-serif; line-height: 1.25; }
+          .prebid-native-link { color: inherit; text-decoration: none; }
+          .prebid-native-image { display: block; max-width: 100%; height: auto; }
+          .prebid-native-title { display: block; font-weight: bold; }
+          .prebid-native-body, .prebid-native-cta { display: block; }
   price_granularity:
     low:
       - min: 0.50
