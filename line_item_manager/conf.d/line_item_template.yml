@@ -25,6 +25,7 @@ creativePlaceholders:
   {% for size in user_cfg.creative[li.media_type].sizes %}
   {% if li.media_type == 'native' %}
   - creativeTemplateId: {{ li.native_creative_template.id }}
+    creativeSizeType: "NATIVE"
     size: {{ size }}
   {% else %}
   - size: {{ size }}

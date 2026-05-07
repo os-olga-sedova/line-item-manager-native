@@ -181,6 +181,13 @@ class NativeStyle(AppOperations):
         if 'id' in self.create_params:
             del self.create_params['id']
 
+    def activate(self) -> dict:
+        if self.dry_run:
+            return dict(numChanges=1)
+        return self.svc().performNativeStyleAction(
+            {'xsi_type': 'ActivateNativeStyles'},
+            self.statement().ToStatement()) # type: ignore[union-attr]
+
 class CurrentNetwork(AppOperations):
     use_statement = False
     service = 'NetworkService'

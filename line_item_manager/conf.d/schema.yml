@@ -77,7 +77,7 @@ properties:
             $ref: "#/definitions/nativeVariableValuesType"
           creative_template_variable_values:
             type: "array"
-            minItems: 1
+            minItems: 0
             items:
               type: "object"
               additionalProperties: True
@@ -286,14 +286,14 @@ definitions:
   nativeVariableValuesType:
     oneOf:
       - type: "object"
-        minProperties: 1
+        minProperties: 0
         additionalProperties:
           anyOf:
             - $ref: "#/definitions/nativeVariableValueScalar"
             - type: "object"
               additionalProperties: True
       - type: "array"
-        minItems: 1
+        minItems: 0
         items:
           type: "object"
           additionalProperties: True

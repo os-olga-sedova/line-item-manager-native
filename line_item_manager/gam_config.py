@@ -173,7 +173,8 @@ class GAMLineItems:
     def native_creative_template(self) -> dict:
         if self._native_creative_template is None:
             template_id = config.native_template_id(config.user['creative']['native'])
-            self._native_creative_template = CreativeTemplate(id=template_id).fetchone()
+            self._native_creative_template = serialize_object(
+                CreativeTemplate(id=template_id).fetchone())
             if not self._native_creative_template:
                 if config.cli.get('dry_run'):
                     self._native_creative_template = dict(
@@ -200,7 +201,12 @@ class GAMLineItems:
             style_cfg = self.native_style_cfg(cfg)
             if style_cfg:
                 log('native_style', obj=style_cfg)
-                self._native_style = NativeStyle(**style_cfg).fetchone(create=True)
+                self._native_style = serialize_object(
+                    NativeStyle(**style_cfg).fetchone(create=True))
+                if self._native_style.get('status', 'ACTIVE') != 'ACTIVE':
+                    NativeStyle(id=self._native_style['id']).activate()
+                    self._native_style = serialize_object(
+                        NativeStyle(id=self._native_style['id']).fetchone())
             else:
                 self._native_style = {}
         return self._native_style

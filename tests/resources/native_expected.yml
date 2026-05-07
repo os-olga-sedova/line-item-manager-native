@@ -3,7 +3,8 @@
     microAmount: 1250000
   costType: CPM
   creativePlaceholders:
-  - creativeTemplateId: 10004400
+  - creativeSizeType: NATIVE
+    creativeTemplateId: 10004400
     size:
       height: 1
       width: 1
@@ -36,7 +37,8 @@
     microAmount: 1500000
   costType: CPM
   creativePlaceholders:
-  - creativeTemplateId: 10004400
+  - creativeSizeType: NATIVE
+    creativeTemplateId: 10004400
     size:
       height: 1
       width: 1

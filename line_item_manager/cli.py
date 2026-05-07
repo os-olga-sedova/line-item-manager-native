@@ -1,7 +1,7 @@
 """Console script for line_item_manager."""
 from functools import partial
+from importlib import resources
 import json
-import pkg_resources
 import sys
 
 import click
@@ -155,8 +155,8 @@ def create(ctx: click.core.Context, configfile: str, **kwargs):
             logger.error('Cleanup: Google Ads Error, %s', _e)
 
 def show_resource(filename: str) -> None:
-    rsrc_name = pkg_resources.resource_filename('line_item_manager', filename) # type: ignore[misc]
-    with open(rsrc_name) as fp:
+    rsrc = resources.files('line_item_manager').joinpath(filename)
+    with rsrc.open() as fp:
         print(fp.read())
 
 @cli.command()
